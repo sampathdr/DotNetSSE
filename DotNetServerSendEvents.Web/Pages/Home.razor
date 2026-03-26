@@ -1,0 +1,45 @@
+﻿@inject IConfiguration Configuration
+@page "/"
+
+<PageTitle>Home</PageTitle>
+
+<h1>Hello, world!</h1>
+
+<ul>
+    @foreach (var item in messages)
+    {
+        <li>@item</li>
+    }
+</ul>
+
+@code{
+    private List<string> messages = new();
+
+    protected async override Task OnInitializedAsync()
+    {
+        var client = new HttpClient();
+
+        var apiUrl = Configuration["ApiUrl"] ?? "http://localhost:5000";
+        var stream = await client.GetStreamAsync($"{apiUrl}/stream");
+        var reader = new StreamReader(stream);
+
+        while (true)
+        {
+            var line = await reader.ReadLineAsync();
+
+            if (line == null)
+                break;
+
+
+            if (!string.IsNullOrWhiteSpace(line) && line.StartsWith("data:"))
+            {
+                var data = line.Replace("data:", "").Trim();
+
+                messages.Add(data);
+                
+                // Important: UI thread update
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+}
